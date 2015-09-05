@@ -54,12 +54,9 @@ script:
   - echo $PYTHONPATH
   - pwd
   - ls
-  - python --version
-  - uname -a
-  - free -m
-  - df -h
-  - ulimit -a
-  - nosetests -v
+  - ls build
+  - ls build/lib
+  - PYTHONPATH=build/lib:$PYTHONPATH nosetests -v
 
 #after_script:
 after_failure:
