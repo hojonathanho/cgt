@@ -48,6 +48,7 @@ install:
   - mkdir build && cd build && cmake .. && make && cd ..
 
 script:
+  - export PYTHONPATH=.:build/lib:$PYTHONPATH
   - python --version
   - uname -a
   - free -m
