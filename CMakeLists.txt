@@ -37,7 +37,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/4build/cmake)
 include(${CMAKE_SOURCE_DIR}/4build/cmake/UseCython.cmake)
 include(${CMAKE_SOURCE_DIR}/4build/cmake/CUDA.cmake)
 
-find_package(PythonLibs REQUIRED)
+find_package(PythonLibs 2.7 REQUIRED)
 find_package(Numpy REQUIRED)
 
 if (APPLE)
