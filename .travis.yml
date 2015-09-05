@@ -48,9 +48,11 @@ install:
   - pwd
   - ls
   - mkdir build && cd build && cmake .. && make && cd ..
+  - export PYTHONPATH=$(pwd)/build/lib:$PYTHONPATH
+  - find /home/travis/miniconda/
+  - find /home/travis/miniconda/envs/pyenv
 
 script:
-  - export PYTHONPATH=$(pwd)/build/lib:$PYTHONPATH
   - echo $PYTHONPATH
   - python -c "import cgt; from cgt import cycgt"
   - pwd
