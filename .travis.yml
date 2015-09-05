@@ -11,6 +11,14 @@ python:
   - "2.7"
   - "3.3"
 
+# need updated cmake 2.8.11
+addons:
+  apt:
+    sources:
+      - kalakris-cmake
+    packages:
+      - cmake
+
 # command to install dependencies
 before_install:
 # Install miniconda to avoid compiling scipy
