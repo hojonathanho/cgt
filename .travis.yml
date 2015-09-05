@@ -19,8 +19,8 @@ addons:
       - ubuntu-toolchain-r-test
     packages:
       - cmake
-      - gcc-4.8
-      - g++-4.8
+#     - gcc-4.8
+#     - g++-4.8
 
 # command to install dependencies
 before_install:
@@ -33,6 +33,8 @@ before_install:
   - cd ..
   - export PATH=/home/travis/miniconda/bin:$PATH
   - conda update --yes conda
+  - export CC="gcc-4.8"
+  - export CXX="g++-4.8"
 
 install:
   - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then conda create --yes -q -n pyenv python=2.7 numpy=1.9.2 scipy=0.15.1 nose=1.3.4 cython=0.23.1 pip ; fi
