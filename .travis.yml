@@ -16,8 +16,11 @@ addons:
   apt:
     sources:
       - kalakris-cmake
+      - ubuntu-toolchain-r-test
     packages:
       - cmake
+      - gcc-4.8
+      - g++-4.8
 
 # command to install dependencies
 before_install:
@@ -32,11 +35,10 @@ before_install:
   - conda update --yes conda
 
 install:
-  - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then conda create --yes -q -n pyenv python=2.7 numpy=1.9.2 scipy=0.15.1 nose=1.3.4 pip ; fi
-  - if [[ $TRAVIS_PYTHON_VERSION == '3.3' ]]; then conda create --yes -q -n pyenv python=3.3 numpy=1.9.2 scipy=0.15.1 nose=1.3.4 pip ; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then conda create --yes -q -n pyenv python=2.7 numpy=1.9.2 scipy=0.15.1 nose=1.3.4 cython=0.23.1 pip ; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == '3.3' ]]; then conda create --yes -q -n pyenv python=3.3 numpy=1.9.2 scipy=0.15.1 nose=1.3.4 cython=0.23.1 pip ; fi
   - source activate pyenv
   - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then pip install pydot; fi
-  - pip install cython==0.22.1
   - pwd
   - ls
   - mkdir build && cd build && cmake .. && make && cd ..
