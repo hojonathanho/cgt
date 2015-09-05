@@ -46,7 +46,7 @@ def determine_devices(nodes_sorted, updatetarg2src):
     # on possible devices for a node
 
     if python_only():
-        return {node:Device() for node in nodes_sorted}
+        return {node:core.Device() for node in nodes_sorted}
 
     # (1) Get available devices for nodes, determined by which impls are available and node types
     compile_info = get_compile_info()
