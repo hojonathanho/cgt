@@ -47,7 +47,7 @@ install:
   - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then pip install pydot; fi
   - pwd
   - ls
-  - mkdir build && cd build && cmake .. -DPYTHON_LIBRARY=/home/travis/miniconda/envs/pyenv/lib/libpython2.7.so && make && cd ..
+  - mkdir build && cd build && cmake .. -DPYTHON_INCLUDE_DIR=/home/travis/miniconda/envs/pyenv/include/python2.7 -DPYTHON_LIBRARY=/home/travis/miniconda/envs/pyenv/lib/libpython2.7.so && make && cd ..
   - export PYTHONPATH=$(pwd)/build/lib:$PYTHONPATH
   - find /home/travis/miniconda/envs/pyenv
 
