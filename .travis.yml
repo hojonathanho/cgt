@@ -50,17 +50,14 @@ install:
   - mkdir build && cd build && cmake .. && make && cd ..
 
 script:
-  - export PYTHONPATH=build/lib:$PYTHONPATH
+  - export PYTHONPATH=$(pwd)/build/lib:$PYTHONPATH
   - echo $PYTHONPATH
+  - python -c "import cgt; from cgt import cycgt"
   - pwd
   - ls
   - ls build
   - ls build/lib
-  - PYTHONPATH=build/lib:$PYTHONPATH nosetests -v
-
-#after_script:
+  - nosetests -v
 after_failure:
   - cat /home/travis/.pip/pip.log
-#after_success:
-
 cache: apt
