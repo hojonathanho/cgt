@@ -636,11 +636,12 @@ def get_compile_info():
         CUDNN_ROOT = cmake_info["CUDNN_ROOT"]
 
 
+        cuda_library_dir = osp.join(CUDA_ROOT,"lib64") if osp.exists(osp.join(CUDA_ROOT,"lib64")) else osp.join(CUDA_ROOT,"lib")
         _COMPILE_CONFIG = dict(        
             OPENBLAS_INCLUDE_DIR = osp.join(CGT_BUILD_ROOT,"OpenBLAS"),
             CGT_INCLUDE_DIR = cmake_info["CGT_INCLUDE_DIR"],
             CGT_LIBRARY_DIR = osp.join(CGT_BUILD_ROOT,"lib"),
-            CUDA_LIBRARY_DIR = osp.join(CUDA_ROOT,"lib"),
+            CUDA_LIBRARY_DIR = cuda_library_dir,
             CUDA_INCLUDE_DIR = osp.join(CUDA_ROOT,"include"), 
             CUDA_LIBRARIES = cmake_info["CUDA_LIBRARIES"], 
             DEFINITIONS = DEFINITIONS,  
@@ -688,7 +689,7 @@ def _make_cpp_compile_cmd(srcpath):
 
 def _make_cuda_compile_cmd(srcpath):
     d = get_compile_info()
-    return "nvcc %(srcpath)s -c -o %(srcpath)s.o -ccbin cc -m64 -Xcompiler  -fPIC -Xcompiler -O3 -Xcompiler -arch -Xcompiler x86_64 %(includes)s %(definitions)s"%dict(
+    return "nvcc %(srcpath)s -c -o %(srcpath)s.o -ccbin cc -m64 -Xcompiler  -fPIC -Xcompiler -O3 %(includes)s %(definitions)s"%dict(
         srcpath = srcpath, includes=d["INCLUDES"], definitions=d["DEFINITIONS"])
 
 def _make_link_cmd(objs, extra_link_flags, libpath):
