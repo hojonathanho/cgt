@@ -76,6 +76,9 @@ cdef extern from "cgt_common.h":
         cgt_c32
         cgt_O
 
+
+    bint cgt_arrays_equal(const cgtArray* a1, const cgtArray* a2)
+
     bint cgt_is_array(cgtObject*)
     bint cgt_is_tuple(cgtObject*)
 
@@ -261,6 +264,12 @@ cdef extern from "execution.h" namespace "cgt":
         cgtTuple* run(cgtTuple*)
 
     Interpreter* create_interpreter(ExecutionGraph*, vector[MemLocation], int)
+
+cdef extern from "serialization.h" namespace "cgt":
+    string serialize(cgtArray* a)
+    cgtArray* deserializeArray(const string&)
+    string serialize(const MemLocation&)
+    MemLocation deserializeMemLocation(const string&)
 
 cdef vector[size_t] _tovectorlong(object xs):
     cdef vector[size_t] out = vector[size_t]()
@@ -457,3 +466,15 @@ def apply_byref(fptr, cldata, inputs, output):
     # for (i,x) in enumerate(inputs): reads[i] = 
     # <cgtByRefFun>_getfuncptr(fptr), _getstructptr(cldata), [py2cgt_object(x) for x in inputs]
     # del[] reads
+
+
+def test_array_serialization():
+    cdef cgtArray* a1 = py2cgt_array(np.random.rand(5,3), cgtCPU) # TODO: test GPU arrays?
+    cdef cgtArray* a1_deserialized = deserializeArray(serialize(a1))
+    assert cgt_arrays_equal(a1, a1_deserialized)
+    del a1; del a1_deserialized
+
+def test_memlocation_serialization():
+    cdef MemLocation loc = MemLocation(2, cgtCPU)
+    cdef MemLocation loc_deserialized = deserializeMemLocation(serialize(loc))
+    assert loc_deserialized.index() == loc.index() and loc_deserialized.devtype() == loc.devtype()

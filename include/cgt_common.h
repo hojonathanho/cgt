@@ -118,6 +118,7 @@ public:
   cgtDevtype devtype() const { return devtype_; }
   bool ownsdata() const { return ownsdata_; }
   void* data() { return data_; }
+  const void* data() const { return data_; }
   
   template <typename T>
   T& at(size_t i) {return static_cast<T*>(data_)[i];}
@@ -162,6 +163,8 @@ void cgtObject::Release() const {
   }
 }
 
+bool cgt_arrays_equal(const cgtArray* a1, const cgtArray* a2);
+
 /*
 Copy from -> to, transfering data between between devices if necessary
 */
@@ -184,6 +187,13 @@ typedef cgtObject *(*cgtByValFun)(void * /* closure data */, cgtObject ** /* rea
             fflush (stderr);\
             abort();\
         }\
+    } while (0)
+
+#define cgt_fail(msg, ...)  \
+    do {\
+        fprintf(stderr, msg, ##__VA_ARGS__);\
+        fflush(stderr);\
+        abort();\
     } while (0)
 
 #define CGT_NORETURN __attribute__ ((noreturn))
@@ -220,4 +230,4 @@ static inline bool cgt_is_tuple(cgtObject *o) { return o->kind() == cgtObject::T
 
 void *cgt_alloc(cgtDevtype devtype, size_t size);
 void cgt_free(cgtDevtype devtype, void *ptr);
-void cgt_memcpy(cgtDevtype dest_type, cgtDevtype src_type, void *dest_ptr, void *src_ptr, size_t nbytes);
+void cgt_memcpy(cgtDevtype dest_type, cgtDevtype src_type, void *dest_ptr, const void *src_ptr, size_t nbytes);

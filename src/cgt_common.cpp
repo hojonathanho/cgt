@@ -65,6 +65,28 @@ cgtTuple::~cgtTuple() {
 }
 
 
+bool cgt_arrays_equal(const cgtArray* a1, const cgtArray* a2) {
+  if (a1->ndim() != a2->ndim()) return false;
+
+  for (int i = 0; i < a1->ndim(); ++i) {
+    if (a1->shape()[i] != a2->shape()[i]) return false;
+  }
+
+  if (a1->dtype() != a2->dtype()) return false;
+
+  if (a1->devtype() != a2->devtype()) return false;
+
+  assert(a1->nbytes() == a2->nbytes());
+  const uint8_t *a1data = reinterpret_cast<const uint8_t*>(a1->data());
+  const uint8_t *a2data = reinterpret_cast<const uint8_t*>(a2->data());
+  for (int i = 0; i < a1->nbytes(); ++i) {
+    if (a1data[i] != a2data[i]) return false;
+  }
+
+  return true;
+}
+
+
 // ================================================================
 // Copying
 // ================================================================
@@ -135,7 +157,7 @@ void cgt_free(cgtDevtype devtype, void *ptr) {
   }
 }
 
-void cgt_memcpy(cgtDevtype dest_type, cgtDevtype src_type, void *dest_ptr, void *src_ptr, size_t nbytes) {
+void cgt_memcpy(cgtDevtype dest_type, cgtDevtype src_type, void *dest_ptr, const void *src_ptr, size_t nbytes) {
   if (src_type == cgtCPU && dest_type == cgtCPU) {
     memcpy(dest_ptr, src_ptr, nbytes);
   } else {

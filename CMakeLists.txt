@@ -68,7 +68,13 @@ endif(CGT_DEVEL_MODE)
 set(CGT_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
 message("include dir ${CGT_INCLUDE_DIR}")
 
-add_library(cgt SHARED src/cgt_common.cpp include/cgt_common.h)
+
+add_library(cgt SHARED
+    src/cgt_common.cpp
+    include/cgt_common.h
+    src/serialization.cpp
+    include/serialization.h
+)
 if (CGT_ENABLE_CUDA)
   find_package(CUDA REQUIRED)
   add_definitions(-DCGT_ENABLE_CUDA)  
@@ -80,9 +86,9 @@ if (CGT_ENABLE_CUDNN)
       message(FATAL_ERROR "Couldn't find CUDNN. Set CUDNN_ROOT")
     endif()
 endif()
-
+set(CEREAL_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/thirdparty-c/cereal-1.1.2/include)
 target_link_libraries(cgt ${CUDA_CUDART_LIBRARY})
-target_include_directories(cgt PRIVATE ${CUDA_INCLUDE_DIRS} ${CGT_INCLUDE_DIR})
+target_include_directories(cgt PRIVATE ${CUDA_INCLUDE_DIRS} ${CGT_INCLUDE_DIR} ${CEREAL_INCLUDE_DIR})
 
 
 cython_add_module(cycgt ${CMAKE_SOURCE_DIR}/src/cycgt.pyx 
