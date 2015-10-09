@@ -44,7 +44,7 @@ tensor4.__doc__ = _tensor_doc_template%("4-tensor",4)
 
 def tensor(dtype, ndim, name=None, fixed_shape=None):
     return core.Argument(core.TensorType(cgt.floatX if dtype is None else dtype, ndim), name, fixed_shape=fixed_shape)
-scalar.__doc__ = _tensor_doc_template%("k-tensor","k")
+tensor.__doc__ = _tensor_doc_template%("k-tensor","k")
 
 # ================================================================
 # Symbolic functions
@@ -190,6 +190,18 @@ def dot(x, y):
             raise NotImplementedError
     else:
         raise NotImplementedError
+
+def diag(v, k=0):
+    """
+    see numpy.diag
+    """
+    assert isinstance(k, int)
+    assert v.ndim == 1
+    n = size(v,0)+abs(k)
+    out = cgt.zeros((n,n), v.dtype)
+    out = inc_subtensor(out, (cgt.arange(n), cgt.arange(n)+k), v)
+    return out
+
 
 def einsum(desc, x, y):
     """
