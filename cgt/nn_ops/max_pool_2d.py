@@ -9,14 +9,14 @@ import numpy as np
 PoolInfo = namedtuple("PoolInfo", ["kernel_h", "kernel_w", "pad_h", "pad_w", "stride_h", "stride_w"])
 
 def info2closure(info):
-    return [
+    return core.ClosureInfo(triples=[
         ("kernel_h", ctypes.c_int, info.kernel_h),
         ("kernel_w", ctypes.c_int, info.kernel_w),
         ("pad_h", ctypes.c_int, info.pad_h),
         ("pad_w", ctypes.c_int, info.pad_w),
         ("stride_h", ctypes.c_int, info.stride_h),
         ("stride_w", ctypes.c_int, info.stride_w),
-    ]    
+    ])
 # </Copied>
 
 class MaxPool(core.Op):
@@ -50,7 +50,7 @@ class MaxPool(core.Op):
 CGT_EXPORT_C void $function(conv_closure* cl, cgtArray** reads, cgtTuple* write) {
     max_pool<%(cdtype)s>(cl, reads[0], static_cast<cgtArray*>(write->getitem(0)), static_cast<cgtArray*>(write->getitem(1)));
 }"""%dict(cdtype=core.np2c[input_types[0].dtype])
-        return core.NativeCompileInfo(code, closure_triples=info2closure(self.info), includes=["pooling.h"])
+        return core.NativeCompileInfo(code, closure_info=info2closure(self.info), includes=["pooling.h"])
 
 class MaxPoolPullback(core.Op):
     available_impls = ("native_cpu",)
@@ -69,5 +69,5 @@ class MaxPoolPullback(core.Op):
 CGT_EXPORT_C void $function(conv_closure* cl, cgtArray** reads, cgtArray* write) {
     max_pool_pullback<%(cdtype)s>(reads[0], reads[1], reads[2], reads[3], write);
 }"""%dict(cdtype=core.np2c[input_types[0].dtype])
-        return core.NativeCompileInfo(code, closure_triples=info2closure(self.info), includes=["pooling.h"])
+        return core.NativeCompileInfo(code, closure_info=info2closure(self.info), includes=["pooling.h"])
 

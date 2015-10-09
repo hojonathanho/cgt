@@ -12,14 +12,14 @@ def im2col(x, kernelshape, pad, stride):
     return core.Result(Im2Col(Im2ColInfo(*(kernelshape+pad+stride))), [x])
 
 def info2closure(info):
-    return [
+    return core.ClosureInfo(triples=[
         ("kernel_h", ctypes.c_int, info.kernel_h),
         ("kernel_w", ctypes.c_int, info.kernel_w),
         ("pad_h", ctypes.c_int, info.pad_h),
         ("pad_w", ctypes.c_int, info.pad_w),
         ("stride_h", ctypes.c_int, info.stride_h),
         ("stride_w", ctypes.c_int, info.stride_w),
-    ]    
+    ])
 
 
 class Im2Col(core.Op):
@@ -59,7 +59,7 @@ class Im2Col(core.Op):
                     ((%(cdtype)s*)im->data() + im->stride(0)*i, channels, height, width, (%(cdtype)s*)write->data() + write->stride(0)*i);
                 }
             }"""%d
-        return core.NativeCompileInfo(code, includes=["im2col.h"], closure_triples=info2closure(self.info))
+        return core.NativeCompileInfo(code, includes=["im2col.h"], closure_info=info2closure(self.info))
 
 class Col2Im(core.Op):
     available_impls = ("native_cpu",)            
@@ -90,5 +90,5 @@ class Col2Im(core.Op):
                     ((%(cdtype)s*)col->data() + col->stride(0)*i, channels, height, width,(%(cdtype)s*)write->data() + write->stride(0)*i);
                 }
             }"""%d
-        return core.NativeCompileInfo(code, includes=["im2col.h"], closure_triples=info2closure(self.info))
+        return core.NativeCompileInfo(code, includes=["im2col.h"], closure_info=info2closure(self.info))
 

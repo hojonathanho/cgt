@@ -520,7 +520,7 @@ class ReturnByVal(Instr):
 # ================================================================
 
 def nci2callable(nci):
-    template_code = gen_templated_code(nci.includes, nci.closure_triples, nci.func_code)
+    template_code = gen_templated_code(nci.includes, nci.closure_info, nci.func_code)
     compile_info = get_compile_info()    
     prefix = utils.hash_seq1(template_code, compile_info["CPP_FLAGS"], *(src.code for src in nci.extra_srcs))
     d = dict(function=_funcname(prefix), closure=_closurename(prefix),setup=_setupname(prefix),teardown=_teardownname(prefix))
@@ -539,7 +539,7 @@ def nci2callable(nci):
     fptr = getattr(lib, _funcname(prefix))
     setup_fptr = getattr(lib, _setupname(prefix)) if nci.setup else None
     teardown_fptr = getattr(lib, _teardownname(prefix)) if nci.teardown else None
-    cldata = _build_closure(nci.closure_triples)
+    cldata = _build_closure(nci.closure_info)
     return core.NativeCallable(nci.n_in, nci.return_type, nci.op_str, fptr, cldata=cldata, setup_fptr=setup_fptr, teardown_fptr=teardown_fptr,
         store_objects=nci.store_objects)
 
@@ -558,20 +558,17 @@ def gen_templated_code(includes, closure_info, func_code):
     includes = ["cgt_common.h"] + includes
     for fname in includes:
         s.write('#include "%s"\n'%fname)
-    gen_struct_code(closure_info, s)
+    if closure_info is not None:
+        s.write("typedef struct $closure {\n")
+        for (fieldname,fieldtype,_val) in closure_info.triples:
+            s.write(_ctypes2str[fieldtype])
+            s.write(" ")
+            s.write(fieldname)
+            s.write(";\n")
+        s.write("} $closure;\n")
     s.write(func_code)
     return s.getvalue()
 
-def gen_struct_code(triples, outstream):
-    if triples is None:
-        return
-    outstream.write("typedef struct $closure {\n")
-    for (fieldname,fieldtype,_val) in triples:
-        outstream.write(_ctypes2str[fieldtype])
-        outstream.write(" ")
-        outstream.write(fieldname)
-        outstream.write(";\n")
-    outstream.write("} $closure;\n")
 
 _LIBRARIES = {}
 def get_or_load_lib(libname):
@@ -723,12 +720,12 @@ _ctypes2str = {
 
 _struct_cache = {} # because creating ctypes.Structure class is slow for some reason
 
-def _build_closure(triples):
-    if triples is None:
+def _build_closure(closure_info):
+    if closure_info is None:
         return ctypes.c_void_p(0)
     vals = []
     fields = []
-    for (fieldname,fieldtype,val) in triples:
+    for (fieldname,fieldtype,val) in closure_info.triples:
         vals.append(val)
         fields.append((fieldname,fieldtype))
     try:

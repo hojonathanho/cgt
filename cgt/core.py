@@ -556,8 +556,10 @@ class InMemoryData(GetData):
                 return *(cgtArray**)cldata->pptr;
             }"""
         pptr = self.get_pptr()
-        return NativeCompileInfo(code, closure_triples=[("pptr", ctypes.c_void_p, pptr)], 
-            store_objects=self._value)
+        cinfo = ClosureInfo(triples=[("pptr", ctypes.c_void_p, pptr)])
+        # XXX CLOSURE
+        # raise RuntimeError
+        return NativeCompileInfo(code, closure_info=cinfo, store_objects=self._value)
     def __repr__(self):
         return "Data{%s}"%(self.typ)
     def get_device(self):
@@ -727,16 +729,28 @@ def grad(cost, wrt):
 # Compilation 
 # ================================================================
 
+class ClosureInfo(object):
+    def __init__(self, triples, serialize_code=None, deserialize_code=None, destroy_deserialized_code=None):
+        """
+        triples: list of tuples (fieldname, ctypes class, value) that defines the closure structure
+        """
+        self.triples = triples
+        self.serialize_code = serialize_code
+        self.deserialize_code = deserialize_code
+        self.destroy_deserialized_code = destroy_deserialized_code
+    def serialize(self):
+        raise MethodNotDefined
+
 class NativeCompileInfo(object):
     """
     Stores the information necessary to create a NativeCallable object
     """
-    def __init__(self, func_code, closure_triples = None, includes=(), link_flags="", 
+    def __init__(self, func_code, closure_info = None, includes=(), link_flags="", 
             setup=False, teardown=False, gpu_deref_mask=None, store_objects = (), extra_srcs=()):
         """
         func_code : code implementing function
         lang : c++ or cuda
-        closure_tuples: a list of triples (fieldname, ctypes class, value) that will be provided at each call at runtime
+        closure_info: ClosureInfo
         includes: list of strings specifying files to includes
         link flags: string specifying link flags
         setup: bool specifying if there's a setup method to call once when building a Callable, which should be called $setup in the code string
@@ -750,7 +764,7 @@ class NativeCompileInfo(object):
         self.n_in = None
         #####
         self.func_code = func_code
-        self.closure_triples = closure_triples
+        self.closure_info = closure_info
         self.includes = list(includes)
         self.link_flags = link_flags
         self.setup = setup
@@ -910,17 +924,19 @@ class ConstantTensor(Constant):
     def get_closure(self):
         assert isinstance(self.value, np.ndarray)
         shapeptr = ctypes.cast(self.value.ctypes.shape, ctypes.c_void_p).value
-        return [
-        ("ndim", ctypes.c_int,self.value.ndim),
-        ("shape",ctypes.c_void_p,shapeptr),
-        ("dtype",ctypes.c_byte,self.value.dtype.num),
-        ("data",ctypes.c_void_p,self.value.ctypes.data)]
+        # XXX CLOSURE
+        # raise RuntimeError
+        return ClosureInfo(triples=[
+            ("ndim", ctypes.c_int,self.value.ndim),
+            ("shape",ctypes.c_void_p,shapeptr),
+            ("dtype",ctypes.c_byte,self.value.dtype.num),
+            ("data",ctypes.c_void_p,self.value.ctypes.data)])
     def get_native_compile_info(self, input_types, devtype):
         code = None
         if self.return_type == "byval": code = self._c_code_valret()
         elif self.return_type == "byref": code = self._c_code_inplace()
         else: raise ValueError
-        return NativeCompileInfo(func_code=code, closure_triples=self.get_closure(),store_objects=(self.value,))
+        return NativeCompileInfo(func_code=code, closure_info=self.get_closure(),store_objects=(self.value,))
     def _c_code_inplace(self):
         if isinstance(self.value, tuple):
             raise MethodNotDefined
@@ -990,7 +1006,7 @@ class Fill(Op):
         return TensorType(self.dtype, len(input_types))
     def get_closure(self):
         typ = ctypes.c_long if self.value.dtype.kind=='i' else ctypes.c_double
-        return [("value", typ, self.value.item())]
+        return ClosureInfo(triples=[("value", typ, self.value.item())])
     def get_native_compile_info(self, _input_types, devtype):
         assert devtype == "cpu"
         outdtype = Dtype.canon(self.value.dtype)
@@ -1000,7 +1016,7 @@ class Fill(Op):
                 %(cdtype)s value = cldata->value;
                 for (int i=0; i < s; ++i) write->at<%(cdtype)s>(i) = value;
             }"""%dict(cdtype = np2c[outdtype])
-        return NativeCompileInfo(func_code=func_code, closure_triples=self.get_closure())
+        return NativeCompileInfo(func_code=func_code, closure_info=self.get_closure())
 
 def _isintscalar(typ):
     return typ.dtype[0] == 'i' and typ.ndim == 0
@@ -1412,7 +1428,7 @@ class Size(Op):
             if fixed_shape[self.axis] is not None:
                 return cgt.constant(fixed_shape[self.axis])
     def get_closure(self):
-        return [("ax",ctypes.c_int,self.axis)]
+        return ClosureInfo(triples=[("ax",ctypes.c_int,self.axis)])
     def get_native_compile_info(self, input_types, devtype):
         code = r"""
             CGT_EXPORT_C cgtArray* $function(void* cl0, cgtArray** reads) {
@@ -1422,7 +1438,7 @@ class Size(Op):
                 out->at<size_t>(0) = in->shape()[cl->ax];
                 return out;
             }"""
-        return NativeCompileInfo(code,closure_triples = self.get_closure())
+        return NativeCompileInfo(code, closure_info=self.get_closure())
 
 class Reshape(Op):
     available_impls = ("python","native_cpu")        
@@ -1442,7 +1458,7 @@ class Reshape(Op):
     def typ_apply(self, input_types):
         return TensorType(input_types[0].dtype, len(input_types)-1)
     def get_closure(self, n_parents):
-        return [("ndim", ctypes.c_int,n_parents-1)]
+        return ClosureInfo(triples=[("ndim", ctypes.c_int,n_parents-1)])
     def get_native_compile_info(self, input_types, devtype):
         code = r"""
             CGT_EXPORT_C cgtArray* $function($closure* cldata, cgtArray** reads) {
@@ -1453,7 +1469,7 @@ class Reshape(Op):
                 return out;
             }
             """
-        return NativeCompileInfo(code, closure_triples=self.get_closure(len(input_types)))
+        return NativeCompileInfo(code, closure_info=self.get_closure(len(input_types)))
 
 class Concatenate(Op):
     available_impls = ("python","native_cpu")        
@@ -2102,7 +2118,7 @@ class Mul21(Op):
     def typ_apply(self, input_types):
         return TensorType(input_types[0].dtype, 1)
     def get_closure(self):
-        return [("tA",ctypes.c_bool, self.tA),("handle", ctypes.c_void_p, 0)]
+        return ClosureInfo(triples=[("tA",ctypes.c_bool, self.tA),("handle", ctypes.c_void_p, 0)])
     # gemv docs: https://software.intel.com/en-us/node/520750
     def get_native_compile_info(self, input_types, devtype):
         npdtype = input_types[0].dtype
@@ -2136,7 +2152,7 @@ class Mul21(Op):
                   cublas_%(letter)sgemv((cublasHandle_t)cl->handle, (cublasOperation_t)(!cl->tA), N, M, alpha, (%(cdtype)s*)A->data(), lda, (%(cdtype)s*)x->data(),
                       incx, beta, (%(cdtype)s*)y->data(), incy);
                 }"""%dict(letter=letter, cdtype = np2c[npdtype])         
-        return NativeCompileInfo(code, includes=["cblas.h"], link_flags="-lopenblas", closure_triples = self.get_closure())
+        return NativeCompileInfo(code, includes=["cblas.h"], link_flags="-lopenblas", closure_info=self.get_closure())
     def get_expr(self, (xexpr,yexpr)):
         return u"%s%s \u00D7 %s"%(xexpr, u"\u1d57" if self.tA else "", yexpr)
 
@@ -2197,7 +2213,7 @@ class Mul22(Op):
         assert input_types[0].dtype==cgt.floatX and input_types[1].dtype==cgt.floatX
         return input_types[0]
     def get_closure(self):
-        return [("tA",ctypes.c_bool, self.tA), ("tB",ctypes.c_bool, self.tB), ("handle",ctypes.c_void_p, 0)]
+        return ClosureInfo(triples=[("tA",ctypes.c_bool, self.tA), ("tB",ctypes.c_bool, self.tB), ("handle",ctypes.c_void_p, 0)])
     # best gemm docs: https://software.intel.com/en-us/node/520775
     def get_native_compile_info(self, input_types, devtype):
         npdtype = input_types[0].dtype
@@ -2218,7 +2234,7 @@ class Mul22(Op):
                       ldb, beta, (%(cdtype)s*)C->data(), ldc);
                 }
                 """%dict(letter=letter, cdtype = np2c[npdtype])
-            return NativeCompileInfo(code, includes=["cblas.h"], link_flags="-lopenblas", closure_triples=self.get_closure())
+            return NativeCompileInfo(code, includes=["cblas.h"], link_flags="-lopenblas", closure_info=self.get_closure())
         elif devtype == "gpu":
             letter = letter.upper()
             code = r"""
@@ -2235,7 +2251,7 @@ class Mul22(Op):
 
                 }
                 """%dict(letter=letter, cdtype = np2c[npdtype])
-            return NativeCompileInfo(code, includes=["cublas_v2.h","cgt_cuda.h"], link_flags="-lcublas -lcudart", closure_triples=self.get_closure())
+            return NativeCompileInfo(code, includes=["cublas_v2.h","cgt_cuda.h"], link_flags="-lcublas -lcudart", closure_info=self.get_closure())
 
     def get_expr(self, (xexpr,yexpr)):
         return u"%s%s \u00D7 %s%s"%(xexpr, u"\u1d57" if self.tA else "", yexpr, u"\u1d57" if self.tB else "")
@@ -2275,7 +2291,7 @@ class BatchedMul22(Op):
         # assert inputs[0].dtype==cgt.floatX and inputs[1].dtype==cgt.floatX
         return input_types[0]
     def get_closure(self):
-        return [("tA",ctypes.c_bool, self.tA), ("tB",ctypes.c_bool, self.tB)]        
+        return ClosureInfo(triples=[("tA",ctypes.c_bool, self.tA), ("tB",ctypes.c_bool, self.tB)])
     # <COPIED FROM Mul22> but incremented all dimensions
     def get_native_compile_info(self, input_types, devtype):
         npdtype = input_types[0].dtype
@@ -2298,7 +2314,7 @@ class BatchedMul22(Op):
               }
             }
             """%dict(letter=letter, cdtype = np2c[npdtype])
-        return NativeCompileInfo(code, includes=["cblas.h"], link_flags="-lopenblas", closure_triples=self.get_closure())
+        return NativeCompileInfo(code, includes=["cblas.h"], link_flags="-lopenblas", closure_info=self.get_closure())
     # </COPIED>
 
 class Outer(Op):
@@ -2439,13 +2455,13 @@ class TupleIndex(Op):
         assert isinstance(intype, TupleType)
         return intype[self.idx]
     def get_closure(self, _inputs):
-        return [("idx",ctypes.c_int, self.idx)]
+        return ClosureInfo(triples=[("idx",ctypes.c_int, self.idx)])
     def get_native_compile_info(self, input_types, devtype):
         code=r"""
             CGT_EXPORT_C cgtObject* $function($closure* cldata, cgtTuple** reads) {
                 return reads[0]->getitem(cldata->idx);
             }"""
-        return NativeCompileInfo(code, closure_triples=self.get_closure(input_types))
+        return NativeCompileInfo(code, closure_info=self.get_closure(input_types))
 
 
 

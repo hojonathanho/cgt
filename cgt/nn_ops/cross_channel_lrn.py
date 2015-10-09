@@ -6,11 +6,11 @@ from collections import namedtuple
 LRNInfo = namedtuple("LRNInfo",["localsize","alpha","beta"])
 
 def make_closure(info):
-    return [
+    return ClosureInfo(triples=[
         ("localsize",ctypes.c_int,info.localsize),
         ("alpha",ctypes.c_double,info.alpha),
         ("beta",ctypes.c_double,info.beta)
-    ]
+    ])
 
 class CrossChannelLRNForward(core.Op):
     available_impls = ("native_gpu",)    
@@ -50,7 +50,7 @@ class CrossChannelLRNForward(core.Op):
                 launchker_$function(num_img, channels, height, width, cldata->localsize, cldata->alpha, cldata->beta, (%(cdtype)s*)X->data(), (%(cdtype)s*)top->data(), (%(cdtype)s*)scale->data());
 
             }"""%d
-        return core.NativeCompileInfo(code, closure_triples = make_closure(self.info),
+        return core.NativeCompileInfo(code, closure_info=make_closure(self.info),
             link_flags="-lcudart", gpu_deref_mask=(True,), 
             extra_srcs=[core.SrcFile("cuda",cuda_code)])
     def shp_apply(self, inputs):
@@ -95,7 +95,7 @@ class CrossChannelLRNBackward(core.Op):
             launchker_$function(num_img, channels, height, width, cldata->localsize, cldata->alpha, cldata->beta, (%(cdtype)s*)X->data(), 
                 (%(cdtype)s*)top->data(), (%(cdtype)s*)scaling->data(), (%(cdtype)s*)top_diff->data(), (%(cdtype)s*)bottom_diff->data());            
             }"""%d
-        return core.NativeCompileInfo(code, closure_triples = make_closure(self.info),
+        return core.NativeCompileInfo(code, closure_info=make_closure(self.info),
             link_flags="-lcudart", gpu_deref_mask=(True,True,True,True), 
             extra_srcs=[core.SrcFile("cuda",cuda_code)])
     def shp_apply(self, inputs):

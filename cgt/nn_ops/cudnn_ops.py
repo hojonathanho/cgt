@@ -7,14 +7,14 @@ def cudnn_conv_closure(*ints):
     return (ctypes.c_int*len(ints))(*ints)
 
 def make_closure(ph, pw, sv, sh):
-    return [
+    return ClosureInfo(triples=[
         ("ph",ctypes.c_int,ph),
         ("pw",ctypes.c_int,pw),
         ("sv",ctypes.c_int,sv),
         ("sh",ctypes.c_int,sh),
         ("handle",ctypes.c_void_p,0),
         ("stream",ctypes.c_void_p,0),
-    ]
+    ])
 
 class CudnnConvForward(core.Op):
     available_impls = ("native_gpu",)    
@@ -34,7 +34,7 @@ class CudnnConvForward(core.Op):
                 if (!closure->handle) setup_cudnn(closure);
                 performConvForward(closure, reads[0], reads[1], reads[2], write);
             }"""
-        return core.NativeCompileInfo(code, closure_triples = make_closure(self.ph, self.pw, self.sv, self.sh),
+        return core.NativeCompileInfo(code, closure_info=make_closure(self.ph, self.pw, self.sv, self.sh),
             includes=["cudnn_support.h"], link_flags="-lcudnn -lcudart")
     def shp_apply(self, inputs):
         X,W,_b = inputs
@@ -66,7 +66,7 @@ class CudnnConvBackwardData(core.Op):
                 if (!closure->handle) setup_cudnn(closure);
                 performConvBackwardData(closure, reads[1], reads[2], write);
             }"""
-        return core.NativeCompileInfo(code, closure_triples = make_closure(self.ph, self.pw, self.sv, self.sh),
+        return core.NativeCompileInfo(code, closure_info=make_closure(self.ph, self.pw, self.sv, self.sh),
             includes=["cudnn_support.h"], link_flags="-lcudnn -lcudart")
     def shp_apply(self, inputs):
         return cgt.shape(inputs[0])
@@ -89,7 +89,7 @@ class CudnnConvBackwardFilter(core.Op):
                 if (!closure->handle) setup_cudnn(closure);
                 performConvBackwardFilter(closure, reads[1], reads[2], write);
             }"""
-        return core.NativeCompileInfo(code, closure_triples = make_closure(self.ph, self.pw, self.sv, self.sh),
+        return core.NativeCompileInfo(code, closure_info=make_closure(self.ph, self.pw, self.sv, self.sh),
             includes=["cudnn_support.h"], link_flags="-lcudnn -lcudart")
     def shp_apply(self, inputs):
         return cgt.shape(inputs[0])
@@ -112,7 +112,7 @@ class CudnnConvBackwardBias(core.Op):
                 if (!closure->handle) setup_cudnn(closure);
                 performConvBackwardBias(closure, reads[1], write);
             }"""
-        return core.NativeCompileInfo(code, closure_triples = make_closure(self.ph, self.pw, self.sv, self.sh),
+        return core.NativeCompileInfo(code, closure_info=make_closure(self.ph, self.pw, self.sv, self.sh),
             includes=["cudnn_support.h"], link_flags="-lcudnn -lcudart")            
     def shp_apply(self, inputs):
         return cgt.shape(inputs[0])
@@ -147,7 +147,7 @@ class CudnnPoolForward(core.Op):
                 if (!closure->handle) setup_cudnn(closure);
                 performPoolingForward(closure, reads[0], write);
             }"""
-        return core.NativeCompileInfo(code, closure_triples = poolinfo2closure(self.info),
+        return core.NativeCompileInfo(code, closure_info=poolinfo2closure(self.info),
             includes=["cudnn_support.h"], link_flags="-lcudnn -lcudart")
     def shp_apply(self, inputs):
         info = self.info
@@ -176,7 +176,7 @@ class CudnnPoolBackward(core.Op):
                 if (!closure->handle) setup_cudnn(closure);
                 performPoolingBackward(closure, reads[0], reads[1], reads[2], write);
             }"""
-        return core.NativeCompileInfo(code, closure_triples = poolinfo2closure(self.info),
+        return core.NativeCompileInfo(code, closure_info=poolinfo2closure(self.info),
             includes=["cudnn_support.h"], link_flags="-lcudnn -lcudart")
     def shp_apply(self, inputs):
         return cgt.shape(inputs[0])
