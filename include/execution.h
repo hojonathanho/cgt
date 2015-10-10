@@ -101,6 +101,7 @@ class LoadArgument : public Instruction  {
 public:
     LoadArgument(const std::string& repr, int ind, const MemLocation& writeloc) : Instruction(LoadArgumentKind, repr, true), ind(ind), writeloc(writeloc) {}
     void fire(Interpreter*);
+    int get_ind() const { return ind; }
     const vector<MemLocation>& get_readlocs() const { return readlocs; }
     const MemLocation& get_writeloc() const { return writeloc; }
 private:
@@ -115,6 +116,7 @@ public:
     Alloc(const std::string& repr, cgtDtype dtype, vector<MemLocation> readlocs, const MemLocation& writeloc)
     : Instruction(AllocKind, repr, true), dtype(dtype), readlocs(readlocs), writeloc(writeloc) {}
     void fire(Interpreter*);
+    cgtDtype get_dtype() const { return dtype; }
     const vector<MemLocation>& get_readlocs() const { return readlocs; }
     const MemLocation& get_writeloc() const { return writeloc; }
 private:

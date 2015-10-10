@@ -12,4 +12,7 @@ cgtArray* deserializeArray(const std::string&);
 std::string serialize(const MemLocation&);
 MemLocation deserializeMemLocation(const std::string&);
 
+std::string serialize(const ExecutionGraph& eg);
+ExecutionGraph* deserializeExecutionGraph(const std::string&);
+
 } // namespace cgt

@@ -4,6 +4,7 @@
 #include "cereal/archives/binary.hpp"
 #include "cereal/types/memory.hpp"
 #include "cereal/types/string.hpp"
+#include "cereal/types/vector.hpp"
 #include "cereal/access.hpp" // For LoadAndConstruct
 
 using namespace cgt;
@@ -58,9 +59,91 @@ static void load_and_construct(Archive& ar, cereal::construct<MemLocation>& cons
   construct(index, devtype);
 }};
 
+// Instructions
+template<class Archive>
+void save(Archive& ar, const Instruction& instr) {
+  ar(instr.kind(), instr.repr(), instr.get_readlocs(), instr.get_writeloc());
+  switch (instr.kind()) {
+  case LoadArgumentKind:
+    ar(((const LoadArgument&) instr).get_ind());
+    break;
+  case AllocKind:
+    ar(((const Alloc&) instr).get_dtype());
+    break;
+  case BuildTupKind:
+    break;
+  case ReturnByRefKind:
+  // XXX
+    break;
+  case ReturnByValKind:
+  // XXX
+    break;
+  default:
+    cgt_assert(false);
+    break;
+  }
+}
+
+template<class Archive>
+static Instruction* custom_load_and_construct_instruction(Archive& ar) {
+  InstructionKind kind;
+  std::string repr;
+  vector<MemLocation> readlocs;
+  MemLocation writeloc;
+  //ar(kind, repr, readlocs, writeloc);
+  ar(kind);
+  ar(repr);
+  ar(readlocs);
+  ar(writeloc);
+
+  switch (kind) {
+  case LoadArgumentKind:
+    int ind; ar(ind);
+    return new LoadArgument(repr, ind, writeloc);
+    break;
+  case AllocKind:
+    cgtDtype dtype; ar(dtype);
+    return new Alloc(repr, dtype, readlocs, writeloc);
+    break;
+  case BuildTupKind:
+    return new BuildTup(repr, readlocs, writeloc);
+    break;
+  case ReturnByRefKind:
+    break;
+  case ReturnByValKind:
+    break;
+  }
+  cgt_assert(false);
+  return nullptr;
+}
+
+
+// ExecutionGraph
+template<class Archive>
+void save(Archive& ar, const ExecutionGraph& eg) {
+  ar(eg.n_instrs(), eg.n_args(), eg.n_locs());
+  for (int i = 0; i < eg.n_instrs(); ++i) {
+    ar(*eg.instrs()[i]);
+  }
+}
+
+template<> struct LoadAndConstruct<ExecutionGraph> { template<class Archive>
+static void load_and_construct(Archive& ar, cereal::construct<ExecutionGraph>& construct) {
+  size_t n_instrs, n_args, n_locs;
+  ar(n_instrs, n_args, n_locs);
+
+  std::vector<Instruction*> instrs(n_instrs);
+  for (int i = 0; i < n_instrs; ++i) {
+    instrs[i] = custom_load_and_construct_instruction(ar);
+  }
+
+  construct(instrs, n_args, n_locs);
+}};
 
 } // namespace cereal
 
+
+// Exposed (de)serialization functions
 namespace cgt {
 
 std::string serialize(cgtArray* a) {
@@ -107,6 +190,24 @@ MemLocation deserializeMemLocation(const std::string& s) {
   return out_loc;
 }
 
-
+std::string serialize(const ExecutionGraph& eg) {
+  std::ostringstream oss;
+  {
+    cereal::BinaryOutputArchive ar(oss);
+    std::unique_ptr<const ExecutionGraph> peg(&eg);
+    ar(peg);
+    peg.release();
+  }
+  return oss.str();
+}
+ExecutionGraph* deserializeExecutionGraph(const std::string& s) {
+  std::istringstream iss(s);
+  std::unique_ptr<ExecutionGraph> peg;
+  {
+    cereal::BinaryInputArchive ar(iss);
+    ar(peg);
+  }
+  return peg.release();
+}
 
 } // namespace cgt
